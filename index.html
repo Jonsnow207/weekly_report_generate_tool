@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -93,6 +93,14 @@
       line-height: 1.4;
     }
 
+    iframe {
+      width: 100%;
+      height: 420px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
     .btns {
       display: flex;
       flex-wrap: wrap;
@@ -144,8 +152,8 @@
         </div>
 
         <div class="field half">
-          <label for="templateFile">Template HTML File (Optional)</label>
-          <input id="templateFile" type="file" accept=".html,text/html" />
+          <label>Template</label>
+          <input type="text" value="Built-in default template (template.html)" disabled />
         </div>
 
         <div class="field third">
@@ -175,18 +183,17 @@
 
         <div class="field third">
           <div class="btns">
-            <button id="loadDefaultBtn" type="button" class="alt">Load Default Template</button>
             <button id="generateBtn" type="button">Generate</button>
           </div>
         </div>
       </div>
 
-      <div id="status" class="status">Load a CSV and click Generate.</div>
+      <div id="status" class="status">Upload CSV and click Generate.</div>
     </div>
 
     <div class="card">
-      <label for="templateText">Template HTML (used as source format)</label>
-      <textarea id="templateText" placeholder="Template HTML will appear here after load."></textarea>
+      <label for="previewFrame">Rendered HTML Preview</label>
+      <iframe id="previewFrame" title="Generated Report Preview"></iframe>
     </div>
 
     <div class="card">
@@ -213,24 +220,34 @@
 
     const el = {
       csvFile: document.getElementById('csvFile'),
-      templateFile: document.getElementById('templateFile'),
       weekOf: document.getElementById('weekOf'),
       department: document.getElementById('department'),
       createdByName: document.getElementById('createdByName'),
       createdByEmail: document.getElementById('createdByEmail'),
       outputName: document.getElementById('outputName'),
-      loadDefaultBtn: document.getElementById('loadDefaultBtn'),
       generateBtn: document.getElementById('generateBtn'),
-      templateText: document.getElementById('templateText'),
+      previewFrame: document.getElementById('previewFrame'),
       outputText: document.getElementById('outputText'),
       downloadBtn: document.getElementById('downloadBtn'),
       copyBtn: document.getElementById('copyBtn'),
       status: document.getElementById('status')
     };
 
+    let defaultTemplateHtml = '';
+
     function setStatus(msg, kind = '') {
       el.status.textContent = msg;
       el.status.className = `status ${kind}`.trim();
+    }
+
+    function looksLikeReportTemplate(html) {
+      const text = String(html || '');
+      return (
+        text.includes('Department Progress Report') ||
+        text.includes('Weekly Status Update') ||
+        text.includes('<!-- ======== SECTION 3: GANTT ======== -->') ||
+        text.includes('Week of <strong style=\"color:#FFFFFF;\">[')
+      );
     }
 
     function escapeHtml(v) {
@@ -520,6 +537,16 @@
       return await file.text();
     }
 
+    async function loadDefaultTemplate() {
+      const res = await fetch('./template.html', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Unable to fetch ./template.html');
+      const text = await res.text();
+      if (!looksLikeReportTemplate(text)) {
+        throw new Error('template.html is not a valid weekly report template');
+      }
+      defaultTemplateHtml = text;
+    }
+
     function buildProjects(rows) {
       const projects = new Map();
 
@@ -761,38 +788,18 @@
       return html;
     }
 
-    el.templateFile.addEventListener('change', async () => {
-      const file = el.templateFile.files?.[0];
-      if (!file) return;
-      el.templateText.value = await readFileText(file);
-      setStatus(`Loaded template: ${file.name}`, 'good');
-    });
-
-    el.loadDefaultBtn.addEventListener('click', async () => {
-      try {
-        const res = await fetch('./index.html', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Unable to fetch ./index.html');
-        el.templateText.value = await res.text();
-        setStatus('Loaded default template from index.html', 'good');
-      } catch (err) {
-        setStatus(`Failed to load default template: ${err.message}`, 'error');
-      }
-    });
-
     el.generateBtn.addEventListener('click', async () => {
       try {
         const csv = el.csvFile.files?.[0];
         if (!csv) throw new Error('Please upload a CSV file first.');
-
-        const template = el.templateText.value.trim();
-        if (!template) throw new Error('Template HTML is empty. Load default template or upload template file.');
+        if (!defaultTemplateHtml) await loadDefaultTemplate();
 
         const csvText = await readFileText(csv);
         const rows = parseCsv(csvText);
         if (!rows.length) throw new Error('CSV has no data rows.');
 
         const output = generateHtml(
-          template,
+          defaultTemplateHtml,
           rows,
           el.weekOf.value,
           el.department.value,
@@ -800,6 +807,7 @@
           el.createdByEmail.value
         );
         el.outputText.value = output;
+        el.previewFrame.srcdoc = output;
         setStatus(`Generated HTML from ${csv.name} (${rows.length} rows).`, 'good');
       } catch (err) {
         setStatus(err.message || String(err), 'error');
@@ -839,6 +847,15 @@
         setStatus('Clipboard copy failed. Please copy manually from output area.', 'error');
       }
     });
+
+    (async () => {
+      try {
+        await loadDefaultTemplate();
+        setStatus('Default template loaded from template.html. Upload CSV and click Generate.', 'good');
+      } catch (err) {
+        setStatus(`Failed to load default template: ${err.message}`, 'error');
+      }
+    })();
   </script>
 </body>
 </html>
