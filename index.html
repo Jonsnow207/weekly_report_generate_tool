@@ -1,0 +1,844 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Update HTML Generator</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --ink: #0f2d5e;
+      --muted: #64748b;
+      --line: #dbe5f1;
+      --primary: #1d4ed8;
+      --ok: #059669;
+      --warn: #b45309;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Calibri, Arial, sans-serif;
+      background: linear-gradient(160deg, #eef3fb 0%, #f7fafc 100%);
+      color: #0f172a;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    .head {
+      margin-bottom: 16px;
+    }
+
+    .head h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 24px;
+    }
+
+    .head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+      align-items: end;
+    }
+
+    .field { grid-column: span 12; }
+    .field.half { grid-column: span 6; }
+    .field.third { grid-column: span 4; }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #334155;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    input[type="file"], input[type="text"], textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      font: inherit;
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: var(--primary);
+    }
+
+    button.alt { background: #334155; }
+    button.ok { background: var(--ok); }
+    button.warn { background: var(--warn); }
+
+    .status {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #334155;
+      min-height: 18px;
+    }
+
+    .status.error { color: #b91c1c; font-weight: 700; }
+    .status.good { color: #065f46; font-weight: 700; }
+
+    @media (max-width: 760px) {
+      .field.half, .field.third { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <h1>Weekly Update HTML Generator</h1>
+      <p>Upload CSV, generate weekly report HTML, then download or copy code.</p>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="field half">
+          <label for="csvFile">CSV File</label>
+          <input id="csvFile" type="file" accept=".csv,text/csv" />
+        </div>
+
+        <div class="field half">
+          <label for="templateFile">Template HTML File (Optional)</label>
+          <input id="templateFile" type="file" accept=".html,text/html" />
+        </div>
+
+        <div class="field third">
+          <label for="weekOf">Week Of (MM/DD/YYYY, optional)</label>
+          <input id="weekOf" type="text" placeholder="03/02/2026" />
+        </div>
+
+        <div class="field third">
+          <label for="department">Department</label>
+          <input id="department" type="text" placeholder="AI Automation Projects- Product Development" />
+        </div>
+
+        <div class="field third">
+          <label for="createdByName">Created By Name</label>
+          <input id="createdByName" type="text" placeholder="Ho Thi Thanh Hang" />
+        </div>
+
+        <div class="field third">
+          <label for="createdByEmail">Created By Email</label>
+          <input id="createdByEmail" type="text" placeholder="Hhothithanh@ashleyfurniture.com" />
+        </div>
+
+        <div class="field third">
+          <label for="outputName">Output File Name</label>
+          <input id="outputName" type="text" value="weekly_update_generated.html" />
+        </div>
+
+        <div class="field third">
+          <div class="btns">
+            <button id="loadDefaultBtn" type="button" class="alt">Load Default Template</button>
+            <button id="generateBtn" type="button">Generate</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="status" class="status">Load a CSV and click Generate.</div>
+    </div>
+
+    <div class="card">
+      <label for="templateText">Template HTML (used as source format)</label>
+      <textarea id="templateText" placeholder="Template HTML will appear here after load."></textarea>
+    </div>
+
+    <div class="card">
+      <label for="outputText">Generated HTML Output</label>
+      <textarea id="outputText" placeholder="Generated HTML will appear here."></textarea>
+      <div class="btns">
+        <button id="downloadBtn" type="button" class="ok">Download HTML</button>
+        <button id="copyBtn" type="button" class="warn">Copy HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PHASE_ORDER = [
+      'Review & Assign',
+      'Assessment',
+      'Solution Dev',
+      'UAT',
+      'Pre-Release',
+      'Launch',
+      'Solution Doc',
+      'Maintenance'
+    ];
+
+    const el = {
+      csvFile: document.getElementById('csvFile'),
+      templateFile: document.getElementById('templateFile'),
+      weekOf: document.getElementById('weekOf'),
+      department: document.getElementById('department'),
+      createdByName: document.getElementById('createdByName'),
+      createdByEmail: document.getElementById('createdByEmail'),
+      outputName: document.getElementById('outputName'),
+      loadDefaultBtn: document.getElementById('loadDefaultBtn'),
+      generateBtn: document.getElementById('generateBtn'),
+      templateText: document.getElementById('templateText'),
+      outputText: document.getElementById('outputText'),
+      downloadBtn: document.getElementById('downloadBtn'),
+      copyBtn: document.getElementById('copyBtn'),
+      status: document.getElementById('status')
+    };
+
+    function setStatus(msg, kind = '') {
+      el.status.textContent = msg;
+      el.status.className = `status ${kind}`.trim();
+    }
+
+    function escapeHtml(v) {
+      return String(v ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let i = 0;
+      let inQuotes = false;
+
+      while (i < text.length) {
+        const c = text[i];
+
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') {
+              cell += '"';
+              i += 2;
+              continue;
+            }
+            inQuotes = false;
+            i += 1;
+            continue;
+          }
+          cell += c;
+          i += 1;
+          continue;
+        }
+
+        if (c === '"') {
+          inQuotes = true;
+          i += 1;
+          continue;
+        }
+        if (c === ',') {
+          row.push(cell);
+          cell = '';
+          i += 1;
+          continue;
+        }
+        if (c === '\n') {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = '';
+          i += 1;
+          continue;
+        }
+        if (c === '\r') {
+          i += 1;
+          continue;
+        }
+
+        cell += c;
+        i += 1;
+      }
+
+      row.push(cell);
+      rows.push(row);
+
+      const header = (rows.shift() || []).map(h => (h || '').trim());
+      return rows
+        .filter(r => r.some(x => String(x || '').trim() !== ''))
+        .map(r => {
+          const obj = {};
+          header.forEach((h, idx) => {
+            obj[h] = (r[idx] ?? '').trim();
+          });
+          return obj;
+        });
+    }
+
+    function normalizeStatus(value) {
+      const text = (value || '').trim().toLowerCase();
+      if (text.includes('maint')) return 'maint';
+      if (text.includes('done') || text.includes('complete')) return 'done';
+      if (text.includes('progress') || text.includes('active') || text.includes('working')) return 'in_prog';
+      if (text.includes('todo') || text.includes('to do') || text.includes('not start') || text.includes('pending')) return 'todo';
+      return 'todo';
+    }
+
+    function phaseLabel(subtask, fallbackId) {
+      const text = (subtask || '').trim().toLowerCase();
+      if (text.includes('review') && text.includes('assign')) return 'Review & Assign';
+      if (text.includes('assessment')) return 'Assessment';
+      if (text.includes('solution') && !text.includes('doc')) return 'Solution Dev';
+      if (text.includes('uat')) return 'UAT';
+      if (text.includes('pre-release') || text.includes('pre release')) return 'Pre-Release';
+      if (text === 'launch' || text.includes(' launch')) return 'Launch';
+      if (text.includes('solution doc')) return 'Solution Doc';
+      if (text.includes('maint')) return 'Maintenance';
+      if (fallbackId >= 1 && fallbackId <= 8) return PHASE_ORDER[fallbackId - 1];
+      return '';
+    }
+
+    function parseProjectNum(name) {
+      const m = String(name || '').match(/^\s*(\d+)\./);
+      return m ? Number(m[1]) : 9999;
+    }
+
+    function fmtProjectList(nums) {
+      if (!nums.length) return 'None';
+      if (nums.length === 1) return String(nums[0]);
+      if (nums.length === 2) return `${nums[0]} &amp; ${nums[1]}`;
+      return `${nums.slice(0, -1).join(', ')} &amp; ${nums[nums.length - 1]}`;
+    }
+
+    function phaseCellFromStatus(statusValue, etaValue) {
+      const token = normalizeStatus(statusValue);
+      const eta = (etaValue || '').trim();
+      let label;
+      if (token === 'done') label = 'DONE';
+      else if (token === 'maint') label = 'MAINT.';
+      else if (eta) label = eta;
+      else if (token === 'in_prog') label = 'IN PROG';
+      else label = 'TO DO';
+      return { token, label };
+    }
+
+    function ganttCell(token, label) {
+      if (token === 'done') {
+        return ['<div style="background-color:#22C55E; border-radius:3px; padding:5px 0; font-size:8px; font-weight:bold; color:#FFF; text-align:center;">DONE</div>', '#059669'];
+      }
+      if (token === 'maint') {
+        return ['<div style="background-color:#059669; border-radius:3px; padding:5px 0; font-size:8px; font-weight:bold; color:#FFF; text-align:center;">MAINT.</div>', '#059669'];
+      }
+      if (token === 'in_prog') {
+        return [`<div style="background-color:#B45309; border-radius:3px; padding:5px 0; font-size:8px; font-weight:bold; color:#FFF; text-align:center;">${escapeHtml(label || 'IN PROG')}</div>`, '#B45309'];
+      }
+      return [`<div style="background-color:#CBD5E1; border-radius:3px; padding:5px 0; font-size:8px; color:#64748B; text-align:center;">${escapeHtml(label || 'TO DO')}</div>`, '#64748B'];
+    }
+
+    function renderCompletedCards(maintainingProjects) {
+      if (!maintainingProjects.length) {
+        return [
+          '                <tr>',
+          '                  <td style="background-color:#FFFFFF; padding:14px 16px; font-size:13px; color:#475569;">No maintaining projects this week.</td>',
+          '                </tr>'
+        ].join('\n');
+      }
+
+      const chunks = [];
+      maintainingProjects.forEach((p, i) => {
+        const detailBorder = i < maintainingProjects.length - 1 ? ' border-bottom:1px solid #E2E8F0;' : '';
+        const completedPhases = p.phase_tokens.filter(t => t === 'done' || t === 'maint').length;
+        const barWidth = Math.max(0, Math.min(100, p.completion_pct));
+
+        chunks.push([
+          '                <tr>',
+          '                  <td style="background-color:#F0FFF4; padding:12px 16px; border-bottom:1px solid #D1FAE5;">',
+          '                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">',
+          '                      <tr>',
+          '                        <td>',
+          `                          <div class="proj-title" style="font-size:15px; font-weight:bold; color:#065F46;">${escapeHtml(p.name)}</div>`,
+          `                          <div class="proj-meta" style="font-size:13px; color:#374151; margin-top:3px;">PM: ${escapeHtml(p.pm)} &nbsp;|&nbsp; Tool: ${escapeHtml(p.tool)}</div>`,
+          '                        </td>',
+          '                        <td align="right" valign="middle">',
+          '                          <span class="badge" style="background-color:#059669; color:#FFFFFF; font-size:11px; font-weight:bold; padding:4px 12px; border-radius:12px; white-space:nowrap;">MAINTAINING</span>',
+          '                        </td>',
+          '                      </tr>',
+          '                    </table>',
+          '                  </td>',
+          '                </tr>',
+          '                <tr>',
+          `                  <td style="background-color:#FFFFFF; padding:12px 16px;${detailBorder}">`,
+          '                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">',
+          '                      <tr>',
+          `                        <td class="bar-label" style="font-size:13px; color:#374151; font-weight:bold; padding-bottom:5px;">Completion: ${p.completion_pct}%</td>`,
+          `                        <td align="right" class="bar-label" style="font-size:13px; color:#059669; font-weight:bold; padding-bottom:5px;">${completedPhases} / 8 phases</td>`,
+          '                      </tr>',
+          '                      <tr>',
+          '                        <td colspan="2" style="background-color:#E2E8F0; border-radius:4px; height:10px; overflow:hidden;">',
+          `                          <table role="presentation" width="${barWidth}%" cellpadding="0" cellspacing="0" border="0" style="height:10px;">`,
+          '                            <tr><td style="background-color:#22C55E; border-radius:4px; height:10px;"></td></tr>',
+          '                          </table>',
+          '                        </td>',
+          '                      </tr>',
+          '                    </table>',
+          '                  </td>',
+          '                </tr>'
+        ].join('\n'));
+      });
+
+      return chunks.join('\n');
+    }
+
+    function renderMaintainingGroup(maintainingProjects) {
+      const rows = renderCompletedCards(maintainingProjects);
+      return [
+        '          <!-- ---- GROUP A: MAINTAINING ---- (UNCHANGED) -->',
+        '          <tr>',
+        '            <td class="card-padding" style="padding:0 16px 8px 16px;">',
+        '              <div class="sub-group-label" style="background-color:#059669; color:#FFFFFF; font-size:12px; font-weight:bold; text-transform:uppercase; letter-spacing:1px; padding:8px 16px; border-radius:6px 6px 0 0;">&#10003; &nbsp;Maintaining</div>',
+        '              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #A7F3D0; border-top:none; border-radius:0 0 8px 8px; overflow:hidden; margin-bottom:18px;">',
+        rows,
+        '              </table>',
+        '            </td>',
+        '          </tr>',
+        ''
+      ].join('\n');
+    }
+
+    function renderGanttRows(projects) {
+      return projects.map((p, i) => {
+        const border = i < projects.length - 1 ? ' border-bottom:1px solid #E2E8F0;' : '';
+        let pctColor = '#64748B';
+        const cells = p.phase_details.map(phase => {
+          const [cellHtml, cellColor] = ganttCell(phase.token, phase.label);
+          if (phase.token === 'in_prog' || phase.token === 'done' || phase.token === 'maint') {
+            pctColor = phase.token === 'in_prog' ? cellColor : '#059669';
+          }
+          return `                    <td class="gantt-cell" style="padding:3px 2px;${border}">${cellHtml}</td>`;
+        }).join('\n');
+
+        return [
+          '                  <tr>',
+          `                    <td class="gantt-name" style="padding:6px 10px; font-size:10px; font-weight:bold; color:#0F2D5E;${border}">${escapeHtml(p.name)}</td>`,
+          cells,
+          `                    <td class="gantt-cell" style="padding:3px 6px;${border} font-size:10px; font-weight:bold; color:${pctColor}; text-align:center;">${p.completion_pct}%</td>`,
+          '                  </tr>'
+        ].join('\n');
+      }).join('\n');
+    }
+
+    function renderActionRows(projects) {
+      const active = projects.filter(p => p.project_status !== 'maint');
+      if (!active.length) {
+        return [
+          '                  <tr style="background-color:#F8FAFC;">',
+          '                    <td class="action-text" colspan="3" style="padding:12px 16px; font-size:13px; color:#374151;">All projects are in maintaining status.</td>',
+          '                  </tr>'
+        ].join('\n');
+      }
+
+      return active.map((p, i) => {
+        const bg = i % 2 === 0 ? '#F8FAFC' : '#FFFFFF';
+        const border = i < active.length - 1 ? ' border-bottom:1px solid #E2E8F0;' : '';
+        return [
+          `                  <tr style="background-color:${bg};">`,
+          `                    <td class="action-proj" style="padding:12px 16px; font-size:14px; font-weight:bold; color:#0F2D5E;${border} vertical-align:top;">${escapeHtml(p.name)}</td>`,
+          `                    <td class="action-owner" style="padding:12px 16px; font-size:13px; color:#374151;${border} vertical-align:top;">${escapeHtml(p.pm)}</td>`,
+          `                    <td class="action-text" style="padding:12px 16px; font-size:13px; color:#374151;${border}">${escapeHtml(p.next_action)}</td>`,
+          '                  </tr>'
+        ].join('\n');
+      }).join('\n');
+    }
+
+    function replaceOne(text, regex, replacement, desc) {
+      let count = 0;
+      const next = text.replace(regex, (...args) => {
+        count += 1;
+        return typeof replacement === 'function' ? replacement(...args) : replacement;
+      });
+      if (count !== 1) throw new Error(`Unable to update block: ${desc}`);
+      return next;
+    }
+
+    function replaceBetweenMarkers(text, startMarker, endMarker, block, desc) {
+      const start = text.indexOf(startMarker);
+      if (start === -1) throw new Error(`Unable to locate start marker for ${desc}`);
+      const end = text.indexOf(endMarker, start);
+      if (end === -1) throw new Error(`Unable to locate end marker for ${desc}`);
+      return text.slice(0, start) + block + text.slice(end);
+    }
+
+    function defaultWeekOf() {
+      const now = new Date();
+      const day = now.getDay();
+      const mondayOffset = (day + 6) % 7;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - mondayOffset);
+      const mm = String(monday.getMonth() + 1).padStart(2, '0');
+      const dd = String(monday.getDate()).padStart(2, '0');
+      const yyyy = monday.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+
+    async function readFileText(file) {
+      return await file.text();
+    }
+
+    function buildProjects(rows) {
+      const projects = new Map();
+
+      rows.forEach(row => {
+        const name = (row['AI Objective'] || '').trim();
+        if (!name) return;
+
+        const pm = (row['Project Manager'] || '').trim() || 'N/A';
+        const tool = (row['Tool'] || '').trim() || 'N/A';
+        const rawStatus = (row['Status of AI Objective'] || '').trim();
+        const subtaskStatus = (row['Status of Subtask'] || '').trim();
+        const estimatedDate = (row['Estimated Complete Date'] || '').trim();
+        const csvNextAction = (row['Next Action'] || '').trim();
+        const pid = Number.parseInt((row['id'] || '0').trim(), 10) || 0;
+        const subtask = (row['Subtask'] || '').trim();
+
+        if (!projects.has(name)) {
+          projects.set(name, {
+            name,
+            pm,
+            tool,
+            objective_status_raw: rawStatus,
+            phase_tokens: Array(8).fill('todo'),
+            phase_details: Array.from({ length: 8 }, () => ({ token: 'todo', label: 'TO DO' })),
+            subtasks: Array(8).fill(''),
+            next_actions: Array(8).fill('')
+          });
+        }
+
+        const p = projects.get(name);
+        const phase = phaseLabel(subtask, pid);
+        if (!PHASE_ORDER.includes(phase)) return;
+
+        const idx = PHASE_ORDER.indexOf(phase);
+        const statusSource = subtaskStatus || rawStatus;
+        const phaseCell = phaseCellFromStatus(statusSource, estimatedDate);
+
+        p.phase_tokens[idx] = phaseCell.token;
+        p.phase_details[idx] = phaseCell;
+        p.subtasks[idx] = subtask;
+        if (csvNextAction) p.next_actions[idx] = csvNextAction;
+      });
+
+      const ordered = [...projects.values()].sort((a, b) => parseProjectNum(a.name) - parseProjectNum(b.name));
+
+      ordered.forEach(p => {
+        let donePoints = 0;
+        p.phase_tokens.forEach(t => {
+          if (t === 'done' || t === 'maint') donePoints += 1;
+          else if (t === 'in_prog') donePoints += 0.5;
+        });
+        p.completion_pct = Math.round((donePoints / 8) * 100);
+
+        if (p.phase_tokens.every(t => t === 'done' || t === 'maint') || normalizeStatus(p.objective_status_raw) === 'maint') {
+          p.project_status = 'maint';
+        } else {
+          p.project_status = 'in_prog';
+        }
+
+        let nextIdx = p.phase_tokens.findIndex(t => t === 'in_prog');
+        if (nextIdx === -1) nextIdx = p.phase_tokens.findIndex(t => t === 'todo');
+
+        if (nextIdx === -1) {
+          p.next_action = 'Continue monitoring and maintain performance.';
+        } else if (p.next_actions[nextIdx]) {
+          p.next_action = p.next_actions[nextIdx];
+        } else {
+          const label = PHASE_ORDER[nextIdx];
+          const sub = p.subtasks[nextIdx] || label;
+          p.next_action = p.phase_tokens[nextIdx] === 'in_prog'
+            ? `Complete current phase: ${sub}.`
+            : `Start next phase: ${sub}.`;
+        }
+      });
+
+      return ordered;
+    }
+
+    function generateHtml(templateHtml, rows, weekOfInput, departmentInput, createdByNameInput, createdByEmailInput) {
+      const projects = buildProjects(rows);
+
+      const total = projects.length;
+      const doneCount = projects.filter(p => p.project_status === 'maint').length;
+      const activeCount = total - doneCount;
+
+      const completedPhaseTotal = projects.reduce((acc, p) => {
+        return acc + p.phase_tokens.filter(t => t === 'done' || t === 'maint').length;
+      }, 0);
+
+      const allPhaseTotal = total ? total * 8 : 1;
+      const portfolioPct = Math.round((completedPhaseTotal / allPhaseTotal) * 100);
+
+      const maintainingNums = projects
+        .filter(p => p.project_status === 'maint')
+        .map(p => parseProjectNum(p.name))
+        .filter(n => n !== 9999);
+
+      const activeNums = projects
+        .filter(p => p.project_status !== 'maint')
+        .map(p => parseProjectNum(p.name))
+        .filter(n => n !== 9999);
+
+      const weekOf = (weekOfInput || '').trim() || defaultWeekOf();
+      const department = (departmentInput || '').trim();
+      const createdByName = (createdByNameInput || '').trim();
+      const createdByEmail = (createdByEmailInput || '').trim();
+
+      let html = templateHtml;
+
+      if (department) {
+        html = html.replace(
+          /(<div style="font-size:26px; font-weight:bold; color:#FFFFFF; line-height:1.25;">)([\s\S]*?)(<\/div>)/,
+          (_, a, _b, c) => `${a}${escapeHtml(department)}${c}`
+        );
+      }
+
+      if (createdByName) {
+        html = html.replace(
+          /(<div style="font-size:14px; color:#FFFFFF; font-weight:bold;">)([\s\S]*?)(<\/div>)/,
+          (_, a, _b, c) => `${a}[${escapeHtml(createdByName)}] &nbsp;&bull;&nbsp; [Solution Development Specialist]${c}`
+        );
+      }
+
+      if (createdByEmail) {
+        html = html.replace(
+          /(<div style="font-size:12px; color:#A8C8F0; margin-top:4px;">)([\s\S]*?)(<\/div>)/,
+          (_, a, _b, c) => `${a}[${escapeHtml(createdByEmail)}]${c}`
+        );
+      }
+
+      html = replaceOne(
+        html,
+        /(Week of <strong style="color:#FFFFFF;">\[)([^\]]+)(\]<\/strong>)/,
+        (_, a, _b, c) => `${a}${weekOf}${c}`,
+        'week of date'
+      );
+
+      html = replaceOne(
+        html,
+        /(<div class="stat-num" style="font-size:18px; font-weight:bold; color:#FFFFFF;">)\d+(<\/div>\s*<div style="font-size:9px; color:#7EB3F5; text-transform:uppercase; letter-spacing:1px;">Total<\/div>)/s,
+        (_, a, b) => `${a}${total}${b}`,
+        'total count'
+      );
+
+      html = replaceOne(
+        html,
+        /(<div class="stat-num" style="font-size:18px; font-weight:bold; color:#FFFFFF;">)\d+(<\/div>\s*<div style="font-size:9px; color:#86EFAC; text-transform:uppercase; letter-spacing:1px;">Done<\/div>)/s,
+        (_, a, b) => `${a}${doneCount}${b}`,
+        'done count'
+      );
+
+      html = replaceOne(
+        html,
+        /(<div class="stat-num" style="font-size:18px; font-weight:bold; color:#FFFFFF;">)\d+(<\/div>\s*<div style="font-size:9px; color:#FED7AA; text-transform:uppercase; letter-spacing:1px;">Active<\/div>)/s,
+        (_, a, b) => `${a}${activeCount}${b}`,
+        'active count'
+      );
+
+      html = replaceOne(
+        html,
+        /(Overall Portfolio Completion<\/td>\s*<td align="right" style="font-size:22px; font-weight:bold; color:#2563EB;">)\d+%/s,
+        (_, a) => `${a}${portfolioPct}%`,
+        'portfolio percent label'
+      );
+
+      html = replaceOne(
+        html,
+        /(<table role="presentation" width=")\d+(%" cellpadding="0" cellspacing="0" border="0" style="height:12px;">)/,
+        (_, a, b) => `${a}${portfolioPct}${b}`,
+        'portfolio progress bar width'
+      );
+
+      html = replaceOne(
+        html,
+        />\d+ of \d+ phases complete &nbsp;\|&nbsp; Note: &quot;Maintaining&quot; counts as Complete</,
+        `>${completedPhaseTotal} of ${total * 8} phases complete &nbsp;|&nbsp; Note: &quot;Maintaining&quot; counts as Complete<`,
+        'phase summary text'
+      );
+
+      html = replaceOne(
+        html,
+        /(Maintaining \(Complete\)<\/td><\/tr>\s*<tr><td style="background-color:#F0FFF4; padding:10px 14px; text-align:center; font-size:26px; font-weight:bold; color:#065F46;">)\d+(<\/td>)/s,
+        (_, a, b) => `${a}${doneCount}${b}`,
+        'maintaining summary count'
+      );
+
+      html = replaceOne(
+        html,
+        /(background-color:#F0FFF4; padding:0 14px 10px 14px; text-align:center; font-size:11px; color:#059669;">)Projects[^<]*(<\/td>)/,
+        (_, a, b) => `${a}Projects ${fmtProjectList(maintainingNums)}${b}`,
+        'maintaining summary project list'
+      );
+
+      html = replaceOne(
+        html,
+        /(In Progress<\/td><\/tr>\s*<tr><td style="background-color:#FFF7ED; padding:10px 14px; text-align:center; font-size:26px; font-weight:bold; color:#9A3412;">)\d+(<\/td>)/s,
+        (_, a, b) => `${a}${activeCount}${b}`,
+        'in progress summary count'
+      );
+
+      html = replaceOne(
+        html,
+        /(background-color:#FFF7ED; padding:0 14px 10px 14px; text-align:center; font-size:11px; color:#B45309;">)Projects[^<]*(<\/td>)/,
+        (_, a, b) => `${a}Projects ${fmtProjectList(activeNums)}${b}`,
+        'in progress summary project list'
+      );
+
+      const maintainingGroup = renderMaintainingGroup(projects.filter(p => p.project_status === 'maint'));
+      html = replaceBetweenMarkers(
+        html,
+        '          <!-- ---- GROUP A: MAINTAINING ---- (UNCHANGED) -->',
+        '          <!-- REMOVED: ---- GROUP B: IN PROGRESS ---- (entire section removed per request) -->',
+        maintainingGroup,
+        'maintaining group'
+      );
+
+      const ganttRows = renderGanttRows(projects);
+      html = replaceOne(
+        html,
+        /(<!-- Gantt header row -->[\s\S]*?<\/tr>)([\s\S]*?)(\s*<!-- Gantt Legend -->)/,
+        (_, a, _b, c) => `${a}${ganttRows}${c}`,
+        'gantt rows'
+      );
+
+      const actionRows = renderActionRows(projects);
+      const nextActionMarker = '<!-- ======== SECTION 4: NEXT ACTIONS ======== -->';
+      const markerIndex = html.indexOf(nextActionMarker);
+      if (markerIndex === -1) throw new Error('Unable to locate Next Actions section marker');
+      const prefix = html.slice(0, markerIndex + nextActionMarker.length);
+      let suffix = html.slice(markerIndex + nextActionMarker.length);
+      suffix = replaceOne(
+        suffix,
+        /(<tr style="background-color:#1A4B8C;">[\s\S]*?<\/tr>)([\s\S]*?)(\s*<\/table>)/,
+        (_, a, _b, c) => `${a}${actionRows}${c}`,
+        'next actions rows'
+      );
+      html = prefix + suffix;
+
+      return html;
+    }
+
+    el.templateFile.addEventListener('change', async () => {
+      const file = el.templateFile.files?.[0];
+      if (!file) return;
+      el.templateText.value = await readFileText(file);
+      setStatus(`Loaded template: ${file.name}`, 'good');
+    });
+
+    el.loadDefaultBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('./index.html', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Unable to fetch ./index.html');
+        el.templateText.value = await res.text();
+        setStatus('Loaded default template from index.html', 'good');
+      } catch (err) {
+        setStatus(`Failed to load default template: ${err.message}`, 'error');
+      }
+    });
+
+    el.generateBtn.addEventListener('click', async () => {
+      try {
+        const csv = el.csvFile.files?.[0];
+        if (!csv) throw new Error('Please upload a CSV file first.');
+
+        const template = el.templateText.value.trim();
+        if (!template) throw new Error('Template HTML is empty. Load default template or upload template file.');
+
+        const csvText = await readFileText(csv);
+        const rows = parseCsv(csvText);
+        if (!rows.length) throw new Error('CSV has no data rows.');
+
+        const output = generateHtml(
+          template,
+          rows,
+          el.weekOf.value,
+          el.department.value,
+          el.createdByName.value,
+          el.createdByEmail.value
+        );
+        el.outputText.value = output;
+        setStatus(`Generated HTML from ${csv.name} (${rows.length} rows).`, 'good');
+      } catch (err) {
+        setStatus(err.message || String(err), 'error');
+      }
+    });
+
+    el.downloadBtn.addEventListener('click', () => {
+      const html = el.outputText.value;
+      if (!html.trim()) {
+        setStatus('No generated HTML to download.', 'error');
+        return;
+      }
+
+      const filename = (el.outputName.value || 'weekly_update_generated.html').trim();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename.endsWith('.html') ? filename : `${filename}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setStatus(`Downloaded ${a.download}`, 'good');
+    });
+
+    el.copyBtn.addEventListener('click', async () => {
+      const html = el.outputText.value;
+      if (!html.trim()) {
+        setStatus('No generated HTML to copy.', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(html);
+        setStatus('Generated HTML copied to clipboard.', 'good');
+      } catch {
+        setStatus('Clipboard copy failed. Please copy manually from output area.', 'error');
+      }
+    });
+  </script>
+</body>
+</html>
